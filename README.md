@@ -52,6 +52,11 @@ source venv/bin/activate
 
 ## Usage
 
+### Configuration
+
+Key settings can be adjusted in `config/settings.py`:
+
+
 ### Basic Usage
 
 ```bash
@@ -70,7 +75,8 @@ WAV, MP3, M4A, FLAC, OGG, AAC
 
 ## Output
 
-Results are saved in `outputs/` folder:
+Results are saved in `outputs/run_<time_stamp>` folder:
 - `transcription.txt` - Speaker-labeled transcript
 - `summary.txt` - Conversation summary  
 - `judgment.json` - Situation analysis and recommendations
+- `performance_metrics.json` - models performance evaluation
