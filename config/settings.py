@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Configuration
-API_KEY = os.getenv("API_KEY", "10f31289-1081-495d-ad5e-39ab718c30ed")
+API_KEY = os.getenv("API_KEY", "")
 ENDPOINT = os.getenv("ENDPOINT", "https://aisuite.cirrascale.com/apis/v2")
 
 # Model Configuration
