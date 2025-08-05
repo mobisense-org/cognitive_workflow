@@ -22,7 +22,7 @@ from config.settings import (
     PYANNOTE_AUTH_TOKEN,
 )
 from utils.model_manager import ModelManager
-
+import torch
 warnings.filterwarnings("ignore", category=UserWarning, module="pyannote")
 
 logger = setup_logger(__name__)
@@ -212,7 +212,17 @@ class TranscriptionService:
         try:
             logger.info(f"Starting transcription for: {Path(audio_path).name}")
             transcription_start = time.time()
-            result = whisper.transcribe(self.whisper_model, audio_path)
+            
+            # Get optimized parameters for CPU inference
+            optimized_params = self.model_manager.get_optimized_transcription_params()
+                        
+            # Optimize for CPU performance
+            result = whisper.transcribe(
+                self.whisper_model, 
+                audio_path,
+                **optimized_params
+            )
+            
             transcription_time = time.time() - transcription_start
             
             # Log transcription stats

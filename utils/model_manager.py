@@ -3,8 +3,10 @@ from typing import Optional
 import whisper_timestamped as whisper
 from pyannote.audio import Pipeline
 import torch
+import numpy as np
 from utils.logger import setup_logger
-
+from pyannote.audio.core.io import Audio
+import time
 logger = setup_logger(__name__)
 
 class ModelManager:
@@ -17,6 +19,7 @@ class ModelManager:
         self._whisper_model = None
         self._diarization_pipeline = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = "cpu"
         
         # Store configuration
         self.whisper_cache_dir = whisper_cache_dir
@@ -24,6 +27,67 @@ class ModelManager:
         self.whisper_model_size = whisper_model_size
         self.pyannote_model_name = pyannote_model_name
         self.pyannote_auth_token = pyannote_auth_token or os.getenv("HUGGINGFACE_TOKEN")
+    
+    def _warmup_whisper_model(self, model: whisper.Whisper) -> bool:
+        """Warm up Whisper model with a small audio sample"""
+        try:
+            logger.info("Warming up Whisper model...")
+            
+            # Create a small dummy audio sample (1 second of silence at 16kHz)
+            sample_rate = 16000
+            duration = 1.0
+            dummy_audio = np.zeros(int(sample_rate * duration), dtype=np.float32)
+            
+            # Run a small inference pass to warm up the model
+            with torch.no_grad():
+                result = model.transcribe(dummy_audio, language="en")
+            
+            logger.info("Whisper model warmed up successfully")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Whisper model warmup failed: {e}")
+            return False
+    
+    def _warmup_diarization_pipeline(self, pipeline: Pipeline) -> bool:
+        """Warm up diarization pipeline with a small audio sample"""
+        try:
+            logger.info("Warming up diarization pipeline...")
+            
+            # Create a small dummy audio sample (2 seconds of silence at 16kHz)
+            sample_rate = 16000
+            duration = 2.0
+            dummy_audio = np.zeros(int(sample_rate * duration), dtype=np.float32)
+            
+            # Convert to the format expected by pyannote
+            audio = Audio(sample_rate=sample_rate, mono=True)
+            waveform, sample_rate = audio.crop({"start": 0, "end": duration}, dummy_audio)
+            
+            # Run a small inference pass to warm up the pipeline
+            with torch.no_grad():
+                start_time = time.time()
+                diarization = pipeline({"waveform": waveform, "sample_rate": sample_rate})
+                end_time = time.time()
+                logger.info(f"Diarization pipeline warmed up successfully in {end_time - start_time:.2f} seconds")
+            logger.info("Diarization pipeline warmed up successfully")
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Diarization pipeline warmup failed: {e}")
+            return False
+    
+    def get_optimized_transcription_params(self) -> dict:
+        """Get optimized transcription parameters for CPU inference"""
+        return {
+            "beam_size": 1,  # Reduce beam search complexity
+            "best_of": 1,    # Reduce candidate generation
+            "temperature": 0.0,  # Deterministic output
+            "condition_on_previous_text": False,  # Disable context conditioning
+            "language": "en",  # Specify language to avoid detection overhead
+            "task": "transcribe",
+            "fp16": False,  # Disable FP16 on CPU
+            "verbose": False  # Reduce logging overhead
+        }
     
     def load_whisper_model(self) -> Optional[whisper.Whisper]:
         """Load Whisper model from cache if available, otherwise download"""
@@ -60,6 +124,9 @@ class ModelManager:
                 logger.info("Downloading Whisper model (no cache found)...")
                 self._whisper_model = whisper.load_model(self.whisper_model_size, device=str(self.device))
             
+            # Warm up the model after loading
+            self._warmup_whisper_model(self._whisper_model)
+            
             logger.info("Whisper model loaded successfully")
             return self._whisper_model
             
@@ -91,6 +158,9 @@ class ModelManager:
             # Move to device after loading
             if hasattr(self._diarization_pipeline, 'to'):
                 self._diarization_pipeline = self._diarization_pipeline.to(self.device)
+            
+            # Warm up the pipeline after loading
+            self._warmup_diarization_pipeline(self._diarization_pipeline)
             
             logger.info("Diarization pipeline loaded successfully")
             return self._diarization_pipeline
@@ -132,6 +202,25 @@ class ModelManager:
                 
         except Exception as e:
             logger.error(f"Error preloading models: {e}")
+            success = False
+            
+        return success
+    
+    def warmup_all_models(self) -> bool:
+        """Explicitly warm up all loaded models"""
+        success = True
+        
+        try:
+            if self._whisper_model is not None:
+                if not self._warmup_whisper_model(self._whisper_model):
+                    success = False
+            
+            if self._diarization_pipeline is not None:
+                if not self._warmup_diarization_pipeline(self._diarization_pipeline):
+                    success = False
+                    
+        except Exception as e:
+            logger.error(f"Error warming up models: {e}")
             success = False
             
         return success 

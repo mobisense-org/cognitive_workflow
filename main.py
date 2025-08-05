@@ -149,9 +149,9 @@ class AudioWorkflowOrchestrator:
         for file_path, file_type in files_info:
             if file_exists(file_path):
                 size = file_path.stat().st_size
-                logger.info(f"✓ {file_type}: {file_path} ({size} bytes)")
+                logger.info(f"{file_type}: {file_path} ({size} bytes)")
             else:
-                logger.info(f"✗ {file_type}: {file_path} (not found)")
+                logger.info(f"{file_type}: {file_path} (not found)")
         
         logger.info("="*60)
     
