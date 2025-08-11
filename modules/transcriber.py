@@ -9,7 +9,6 @@ import warnings
 from utils.logger import setup_logger
 from utils.file_handler import write_text_file, get_output_file
 from utils.evaluator import evaluator
-from utils.audio_processor import load_and_speed_audio
 from config.settings import (
     TRANSCRIPTION_FILE, 
     WHISPER_MODEL_SIZE,
@@ -21,6 +20,10 @@ from config.settings import (
     WHISPER_MODELS_DIR,
     PYANNOTE_MODELS_DIR,
     PYANNOTE_AUTH_TOKEN,
+    USE_AIHUB,
+    APP_DEVICE,
+    ENCODER_PATH,
+    DECODER_PATH
 )
 from utils.model_manager import ModelManager
 import torch
@@ -182,111 +185,6 @@ class DiarizationService:
             # Transcription can still work
             return None, 0.0
     
-    def diarize_from_memory(self, waveform: torch.Tensor, sample_rate: int, audio_name: str = "audio") -> Tuple[Optional[Annotation], float]:
-        """Perform speaker diarization on audio from memory tensor using temporary file"""
-        if self.diarization_pipeline is None:
-            logger.warning("Diarization pipeline not available, skipping speaker diarization")
-            return None, 0.0
-        
-        import tempfile
-        import os
-        
-        try:
-            logger.info(f"Starting diarization from memory for: {audio_name}")
-            diarization_start = time.time()
-            
-            # Create temporary file for diarization processing
-            temp_fd, temp_path = tempfile.mkstemp(suffix=".wav", prefix="diarization_")
-            os.close(temp_fd)
-            
-            # Save waveform to temporary file
-            torchaudio.save(temp_path, waveform, sample_rate)
-            
-            # Get audio duration to estimate processing time
-            audio_duration = waveform.shape[1] / sample_rate
-            logger.info(f"Audio duration: {audio_duration:.1f}s")
-            
-            # For shorter audio files, use a timeout to prevent excessive processing
-            max_processing_time = max(audio_duration * 0.8, 15.0) if audio_duration > 0 else 30.0
-            logger.info(f"Diarization timeout set to: {max_processing_time:.1f}s")
-            
-            # Apply diarization with optimized parameters  
-            diarization = self.diarization_pipeline(
-                temp_path,
-                min_speakers=DIARIZATION_MIN_SPEAKERS,
-                max_speakers=DIARIZATION_MAX_SPEAKERS
-            )
-            
-            diarization_time = time.time() - diarization_start
-            
-            # Clean up temporary file
-            os.unlink(temp_path)
-            
-            # Log performance ratio
-            if audio_duration > 0:
-                efficiency_ratio = audio_duration / diarization_time
-                logger.info(f"Diarization efficiency: {efficiency_ratio:.2f}x realtime")
-                
-                # If diarization took too long, recommend skipping it next time
-                if diarization_time > max_processing_time:
-                    logger.warning(f"Diarization took {diarization_time:.1f}s (>{max_processing_time:.1f}s timeout) - consider using rule-based fallback")
-            
-            # Log diarization stats and validate results
-            if diarization:
-                speakers = set()
-                total_speech_duration = 0
-                speaker_durations = {}
-                
-                for segment, _, speaker in diarization.itertracks(yield_label=True):
-                    speakers.add(speaker)
-                    total_speech_duration += segment.duration
-                    
-                    if speaker not in speaker_durations:
-                        speaker_durations[speaker] = 0
-                    speaker_durations[speaker] += segment.duration
-                
-                # Filter out speakers with very short durations (likely noise)
-                min_speaker_duration = 2.0  # Minimum 2 seconds to be considered a real speaker
-                valid_speakers = {speaker for speaker, duration in speaker_durations.items() 
-                                if duration >= min_speaker_duration}
-                
-                if len(valid_speakers) < len(speakers):
-                    logger.info(f"Filtered out {len(speakers) - len(valid_speakers)} speakers with insufficient speech duration")
-                
-                logger.info(f"Diarization completed: {len(valid_speakers)} valid speakers detected "
-                           f"({len(speakers)} total), {total_speech_duration:.2f}s total speech duration, "
-                           f"processing time: {diarization_time:.2f}s")
-                
-                # Log speaker timeline with durations
-                logger.info("Speaker timeline:")
-                for turn, track, speaker in diarization.itertracks(yield_label=True):
-                    if speaker in valid_speakers:  # Only log valid speakers
-                        start_min = int(turn.start // 60)
-                        start_sec = int(turn.start % 60)
-                        end_min = int(turn.end // 60)
-                        end_sec = int(turn.end % 60)
-                        duration = turn.duration
-                        logger.info(f"  {speaker}: {start_min:02d}:{start_sec:02d} - {end_min:02d}:{end_sec:02d} ({duration:.1f}s)")
-                
-                # Update the annotation to only include valid speakers
-                if len(valid_speakers) > 0 and len(valid_speakers) != len(speakers):
-                    # Create new annotation with only valid speakers
-                    filtered_diarization = Annotation()
-                    for segment, _, speaker in diarization.itertracks(yield_label=True):
-                        if speaker in valid_speakers:
-                            filtered_diarization[segment] = speaker
-                    diarization = filtered_diarization
-                    
-            else:
-                logger.warning("Diarization returned empty result")
-            
-            return diarization, diarization_time
-            
-        except Exception as e:
-            logger.error(f"Diarization failed for {audio_name}: {str(e)}")
-            # Transcription can still work
-            return None, 0.0
-    
     def is_available(self) -> bool:
         """Check if diarization service is available"""
         return self.diarization_pipeline is not None
@@ -303,32 +201,61 @@ class TranscriptionService:
     def _load_model(self):
         """Load the Whisper model using model manager"""
         try:
-            self.whisper_model = self.model_manager.load_whisper_model()
-            if not self.whisper_model:
-                raise Exception("Failed to load Whisper model via ModelManager")
+            if USE_AIHUB:
+                from qai_hub_models.models._shared.whisper.app import WhisperApp
+                from qai_hub_models.utils.onnx_torch_wrapper import OnnxModelTorchWrapper
+                
+                logger.info("Loading AI Hub Whisper app")
+                if APP_DEVICE == "NPU":
+                    self.app = WhisperApp(
+                        OnnxModelTorchWrapper.OnNPU(ENCODER_PATH),
+                        OnnxModelTorchWrapper.OnNPU(DECODER_PATH),
+                        num_decoder_blocks=6,
+                        num_decoder_heads=8,
+                        attention_dim=512,
+                        mean_decode_len=224,
+                    )
+                else:
+                    self.app = WhisperApp(
+                        OnnxModelTorchWrapper.OnCPU(ENCODER_PATH),
+                        OnnxModelTorchWrapper.OnCPU(DECODER_PATH),
+                        num_decoder_blocks=6,
+                        num_decoder_heads=8,
+                        attention_dim=512,
+                        mean_decode_len=224,
+                    )
+                self.whisper_model = None  # Not used in AI Hub mode
+                logger.info("AI Hub Whisper app loaded successfully")
+            else:
+                self.whisper_model = self.model_manager.load_whisper_model()
+                self.app = None  # Not used in regular mode
+                if not self.whisper_model:
+                    raise Exception("Failed to load Whisper model via ModelManager")
+                logger.info("Whisper model loaded successfully via ModelManager")
         except Exception as e:
             logger.error(f"Failed to load Whisper model: {e}")
             raise
     
     def transcribe(self, audio_path: str) -> Tuple[Dict[str, Any], float]:
         """Transcribe audio file using Whisper model"""
+        if USE_AIHUB:
+            raise Exception("Use transcribe_aihub() method when USE_AIHUB is True")
+            
         if self.whisper_model is None:
             raise Exception("Whisper model not available")
         
         try:
             logger.info(f"Starting transcription for: {Path(audio_path).name}")
-            transcription_start = time.time()
             
-            # Get optimized parameters for CPU inference
+            # Get optimized parameters
             optimized_params = self.model_manager.get_optimized_transcription_params()
                         
-            # Optimize for CPU performance
+            transcription_start = time.time()
             result = whisper.transcribe(
                 self.whisper_model, 
                 audio_path,
                 **optimized_params
             )
-            
             transcription_time = time.time() - transcription_start
             
             # Log transcription stats
@@ -346,59 +273,56 @@ class TranscriptionService:
             logger.error(f"Transcription failed for {audio_path}: {str(e)}")
             raise Exception(f"Transcription failed: {str(e)}")
     
-    def transcribe_from_memory(self, waveform: torch.Tensor, sample_rate: int, audio_name: str = "audio") -> Tuple[Dict[str, Any], float]:
-        """Transcribe audio from memory tensor using temporary file"""
-        if self.whisper_model is None:
-            raise Exception("Whisper model not available")
-        
-        import tempfile
-        import os
+    def is_available(self) -> bool:
+        """Check if transcription service is available"""
+        if USE_AIHUB:
+            return self.app is not None
+        else:
+            return self.whisper_model is not None
+
+    def transcribe_aihub(self, audio_path: str) -> Tuple[Dict[str, Any], float]:
+        """Transcribe audio file using AI Hub Whisper app"""
+        if not USE_AIHUB:
+            raise Exception("Use transcribe() method when USE_AIHUB is False")
+            
+        if self.app is None:
+            raise Exception("AI Hub Whisper app not available")
         
         try:
-            logger.info(f"Starting transcription from memory for: {audio_name}")
+            logger.info(f"Starting AI Hub transcription for: {Path(audio_path).name}")
+            
             transcription_start = time.time()
-            
-            # Create temporary file for whisper processing
-            temp_fd, temp_path = tempfile.mkstemp(suffix=".wav", prefix="whisper_")
-            os.close(temp_fd)
-            
-            # Save waveform to temporary file
-            torchaudio.save(temp_path, waveform, sample_rate)
-            
-            # Get optimized parameters for CPU inference
-            optimized_params = self.model_manager.get_optimized_transcription_params()
-                        
-            # Optimize for CPU performance
-            result = whisper.transcribe(
-                self.whisper_model, 
-                temp_path,
-                **optimized_params
-            )
-            
+            transcription_text = self.app.transcribe(audio_path)
             transcription_time = time.time() - transcription_start
             
-            # Clean up temporary file
-            os.unlink(temp_path)
+            logger.info(f"AI Hub transcription completed in {transcription_time:.2f}s")
             
-            # Log transcription stats
-            segments = result.get("segments", [])
-            duration = result.get("duration", 0)
-            language = result.get("language", "unknown")
+            # Convert string result to expected dictionary format
+            # Get audio duration for the result
+            try:
+                waveform, sample_rate = torchaudio.load(audio_path)
+                duration = waveform.shape[1] / sample_rate
+            except:
+                duration = 0.0
             
-            logger.info(f"Transcription completed: {len(segments)} segments, "
-                       f"{duration:.2f}s duration, language: {language}, "
-                       f"processing time: {transcription_time:.2f}s")
+            # Create a single segment for the entire transcription
+            # Since AI Hub doesn't provide timestamps, we'll create one segment
+            result = {
+                "text": transcription_text,
+                "segments": [{
+                    "start": 0.0,
+                    "end": duration,
+                    "text": transcription_text
+                }],
+                "duration": duration,
+                "language": "en"  # AI Hub model is English-only
+            }
             
             return result, transcription_time
             
         except Exception as e:
-            logger.error(f"Transcription failed for {audio_name}: {str(e)}")
-            raise Exception(f"Transcription failed: {str(e)}")
-    
-    def is_available(self) -> bool:
-        """Check if transcription service is available"""
-        return self.whisper_model is not None
-
+            logger.error(f"AI Hub transcription failed for {audio_path}: {str(e)}")
+            raise Exception(f"AI Hub transcription failed: {str(e)}")
 
 class AudioTranscriber:
     """Main audio transcriber combining transcription and diarization services"""
@@ -428,13 +352,12 @@ class AudioTranscriber:
             logger.warning(f"Could not get audio duration: {e}")
             return 0.0
     
-    def transcribe_audio(self, audio_file_path: Path, speed: float = 1.0) -> Optional[str]:
+    def transcribe_audio(self, audio_file_path: Path) -> Optional[str]:
         """
         Transcribe audio file to text with timestamps and speaker diarization.
         
         Args:
             audio_file_path: Path to the audio file
-            speed: Audio speed multiplier (e.g., 1.5 for 1.5x speed, 2.0 for 2x speed)
             
         Returns:
             Transcribed text with speaker labels and timestamps or None if failed
@@ -445,24 +368,18 @@ class AudioTranscriber:
         
         try:
             logger.info(f"Starting transcription and diarization of {audio_file_path}")
-            if speed != 1.0:
-                logger.info(f"Audio speed will be modified by {speed}x before processing")
             
-            # Load and modify audio speed in memory
-            processed_waveform, sample_rate = load_and_speed_audio(audio_file_path, speed)
-            
-            # Get audio duration for metrics (use original file for accurate metrics)
+            # Get audio duration for metrics
             audio_duration = self._get_audio_duration(audio_file_path)
             
-            # Perform speaker diarization (use processed audio in memory)
-            diarization, diarization_time = self.diarization_service.diarize_from_memory(
-                processed_waveform, sample_rate, audio_file_path.name
-            )
+            # Perform speaker diarization
+            diarization, diarization_time = self.diarization_service.diarize(str(audio_file_path))
             
-            # Transcribe audio (use processed audio in memory)
-            transcription_result, whisper_time = self.transcription_service.transcribe_from_memory(
-                processed_waveform, sample_rate, audio_file_path.name
-            )
+            # Transcribe audio
+            if USE_AIHUB:
+                transcription_result, whisper_time = self.transcription_service.transcribe_aihub(str(audio_file_path))
+            else:
+                transcription_result, whisper_time = self.transcription_service.transcribe(str(audio_file_path))
             
             # Calculate speaker metrics
             speakers_detected = 0
@@ -753,18 +670,17 @@ class AudioTranscriber:
         
         return len(speakers)
     
-    def transcribe_and_save(self, audio_file_path: Path, speed: float = 1.0) -> bool:
+    def transcribe_and_save(self, audio_file_path: Path) -> bool:
         """
         Transcribe audio and save to transcription file.
         
         Args:
             audio_file_path: Path to the audio file
-            speed: Audio speed multiplier (e.g., 1.5 for 1.5x speed, 2.0 for 2x speed)
             
         Returns:
             True if successful, False otherwise
         """
-        transcription = self.transcribe_audio(audio_file_path, speed=speed)
+        transcription = self.transcribe_audio(audio_file_path)
         
         if transcription is None:
             return False
