@@ -1,0 +1,24 @@
+[project]
+name = "cognative-workflow"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "ffmpeg-python>=0.2.0",
+    "imagine-sdk",
+    "librosa>=0.10.0",
+    "pathlib2>=2.3.0",
+    "pyannote-audio>=3.1.0",
+    "pyannote-core>=5.0.0",
+    "qai-hub-models[whisper-base-en]==0.29",
+    "soundfile>=0.12.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "typing-extensions>=4.0.0",
+    "whisper-timestamped>=1.14.0",
+]
+
+[tool.uv.sources]
+imagine-sdk = { path = "ai-hub-apps/imagine_sdk-0.4.2-py3-none-any.whl" }

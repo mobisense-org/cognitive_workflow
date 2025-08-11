@@ -60,7 +60,7 @@ class AudioWorkflowOrchestrator:
             logger.error(f"Failed to initialize workflow components: {e}")
             raise
     
-    def run_full_workflow(self, audio_file_path: Path) -> bool:
+    def run_full_workflow(self, audio_file_path: Path, speed: float = 1.0) -> bool:
         """
         Run the complete three-step workflow.
         
@@ -78,7 +78,7 @@ class AudioWorkflowOrchestrator:
         try:
             # Step 1: Transcription
             logger.info("=== STEP 1: TRANSCRIPTION ===")
-            if not self.run_transcription(audio_file_path):
+            if not self.run_transcription(audio_file_path, speed=speed):
                 logger.error("Transcription step failed")
                 return False
             
@@ -106,13 +106,13 @@ class AudioWorkflowOrchestrator:
             logger.error(f"Workflow failed: {e}")
             return False
     
-    def run_transcription(self, audio_file_path: Path) -> bool:
+    def run_transcription(self, audio_file_path: Path, speed: float = 1.0) -> bool:
         """Run the transcription step."""
         if not file_exists(audio_file_path):
             logger.error(f"Audio file not found: {audio_file_path}")
             return False
         
-        return self.transcriber.transcribe_and_save(audio_file_path)
+        return self.transcriber.transcribe_and_save(audio_file_path, speed=speed)
     
     def run_summarization(self) -> bool:
         """Run the summarization step."""
@@ -182,6 +182,8 @@ Examples:
   python main.py                               # Process first audio file in audio_input/
   python main.py --list-files                  # List available audio files
   python main.py --step transcribe audio.wav   # Run only transcription step
+  python main.py --speed 1.5 audio.wav         # Process audio at 1.5x speed
+  python main.py --speed 2.0 --step transcribe audio.wav # Transcribe at 2x speed
   python main.py --performance-report          # Show performance metrics report
         """
     )
@@ -209,6 +211,13 @@ Examples:
         '--performance-report',
         action='store_true',
         help='Show performance analysis report from historical data'
+    )
+    
+    parser.add_argument(
+        '--speed',
+        type=float,
+        default=1.0,
+        help='Audio playback speed multiplier (e.g., 1.5 for 1.5x speed, 2.0 for 2x speed)'
     )
     
     args = parser.parse_args()
@@ -252,9 +261,9 @@ Examples:
         
         # Run requested workflow steps
         if args.step == 'all':
-            success = orchestrator.run_full_workflow(audio_file_path)
+            success = orchestrator.run_full_workflow(audio_file_path, speed=args.speed)
         elif args.step == 'transcribe':
-            success = orchestrator.run_transcription(audio_file_path)
+            success = orchestrator.run_transcription(audio_file_path, speed=args.speed)
         elif args.step == 'summarize':
             success = orchestrator.run_summarization()
         elif args.step == 'judge':
