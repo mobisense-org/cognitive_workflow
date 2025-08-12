@@ -33,11 +33,13 @@ python -m venv .venv
 ### 4. Activate Virtual Environment
 
 **Linux/macOS:**
+
 ```bash
 source .venv/bin/activate
 ```
 
 **Windows:**
+
 ```bash
 .venv\Scripts\activate
 ```
@@ -57,6 +59,7 @@ cp env.template .env
 ```
 
 Edit `.env` file with your:
+
 - `API_KEY`: Your Imagine API key
 - `ENDPOINT`: API endpoint URL
 - `HUGGINGFACE_TOKEN`: HuggingFace token for pyannote models
@@ -98,6 +101,7 @@ ffmpeg -version
 ```
 
 **If ffmpeg is not recognized:**
+
 - **Windows users:** Restart your terminal or open a new PowerShell/Command Prompt window
 - The installer may require a fresh terminal session to update the PATH environment variable
 - If the issue persists, you may need to restart your computer
@@ -142,20 +146,7 @@ Edit the configuration file for your use case:
 # Open config/settings.py and adjust parameters as needed
 ```
 
-### 13. Setup Environment Variables
-
-Copy the environment template and configure:
-
-```bash
-cp env.template .env
-```
-
-Edit `.env` file with your:
-- `API_KEY`: Your Imagine API key
-- `ENDPOINT`: API endpoint URL
-- `HUGGINGFACE_TOKEN`: HuggingFace token for pyannote models
-
-### 14. Test the Installation
+### 13. Test the Installation
 
 Run the test script:
 
@@ -163,14 +154,31 @@ Run the test script:
 python main.py
 ```
 
-### 15. Check Results
+## Troubleshooting
+
+### ONNX Runtime Error
+
+If you encounter this error when running `python main.py`:
+
+```
+2025-08-12 04:52:29,878 - __main__ - ERROR - Unexpected error: You're targeting QNN, but have additional onnxruntime packages installed. Only 1 onnxruntime package can be installed at once.
+```
+
+Run the following commands EXACTLY (just copy paste; DO NOT EDIT):
+
+```bash
+pip uninstall -y onnxruntime
+pip install onnxruntime-qnn
+```
+
+### 14. Check Results
 
 Results will be saved in the `outputs` folder with timestamped directories containing:
+
 - `transcription.txt` - Speaker-labeled transcript
 - `summary.txt` - Conversation summary
 - `judgment.json` - Situation analysis and recommendations
 - `performance_metrics.json` - Processing performance data
-
 
 ## Usage
 
