@@ -48,7 +48,30 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 6. Setup AI Hub Whisper Models
+### 6. Setup Environment Variables
+
+Copy the environment template and configure:
+
+```bash
+cp env.template .env
+```
+
+Edit `.env` file with your:
+- `API_KEY`: Your Imagine API key
+- `ENDPOINT`: API endpoint URL
+- `HUGGINGFACE_TOKEN`: HuggingFace token for pyannote models
+
+### 7. Configure QAI Hub Token
+
+Sign in to Qualcomm AI Hub with your Qualcomm® ID. After signing in, navigate to [your Qualcomm ID] → Settings → API Token. This should provide an API token that you can use to configure your client:
+
+```bash
+qai-hub configure --api_token API_TOKEN
+```
+
+**Note:** The QAI Hub client is already included in the requirements.txt installation from step 5.
+
+### 8. Setup AI Hub Whisper Models
 
 Navigate to the Whisper application directory:
 
