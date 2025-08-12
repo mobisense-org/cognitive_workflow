@@ -1,82 +1,161 @@
-# Demo Cognitive Workflow
+# Setup Instructions
 
-AI-powered audio transcription, summarization, and situation analysis system.
+This guide will walk you through setting up the Demo Cognitive Workflow system on your machine.
 
-## What it does
+## Prerequisites
 
-1. **Transcribes** audio files using Whisper with speaker identification
-2. **Summarizes** conversations using AI
-3. **Judges** situations and recommends actions
+- Python 3.11+ installed
+- Git installed
+- PowerShell (for Windows users)
+- Internet connection for downloading models
 
-## Quick Setup
+## Step-by-Step Setup
 
-### Prerequisites
-- Python 3.8+
-- 4GB+ RAM
-- Internet connection
+### 1. Clone the Main Repository
 
+```bash
+git clone https://github.com/mobisense-org/cognitive_workflow
+cd cognitive_workflow
+```
 
-### Configure API Key
+### 2. Clone AI Hub Apps Submodule
 
-1. Copy the environment template:
+```bash
+git clone https://github.com/quic/ai-hub-apps/
+```
+
+### 3. Create Python Virtual Environment
+
+```bash
+python -m venv .venv
+```
+
+### 4. Activate Virtual Environment
+
+**Linux/macOS:**
+```bash
+source .venv/bin/activate
+```
+
+**Windows:**
+```bash
+.venv\Scripts\activate
+```
+
+### 5. Install Python Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 6. Setup AI Hub Whisper Models
+
+Navigate to the Whisper application directory:
+
+```bash
+cd ./ai-hub-apps/apps/windows/python/Whisper/
+```
+
+### 7. Install FFmpeg
+
+Run the platform dependencies installer (only accept ffmpeg when prompted):
+
+```powershell
+..\install_platform_deps.ps1 -extra_pkgs ffmpeg
+```
+
+**Important:** When prompted, only say "yes" to ffmpeg installation.
+
+### 8. Verify FFmpeg Installation
+
+After installation, check if ffmpeg is properly installed:
+
+```bash
+ffmpeg -version
+```
+
+**If ffmpeg is not recognized:**
+- **Windows users:** Restart your terminal or open a new PowerShell/Command Prompt window
+- The installer may require a fresh terminal session to update the PATH environment variable
+- If the issue persists, you may need to restart your computer
+
+**Expected output:** You should see ffmpeg version information and configuration details.
+
+### 9. Export Whisper Model
+
+Export the Whisper model for ONNX runtime:
+
+```bash
+python -m qai_hub_models.models.whisper_base_en.export --target-runtime onnx --device "Snapdragon X Elite CRD" --skip-profiling --skip-inferencing
+```
+
+### 10. Setup Model Files
+
+Extract and organize the exported model files:
+
+```powershell
+# Extract WhisperEncoderInf
+Expand-Archive -Path .\build\whisper_base_en\WhisperEncoderInf.onnx.zip -DestinationPath .\build\whisper_base_en\
+mv .\build\whisper_base_en\model.onnx .\build\whisper_base_en\WhisperEncoderInf
+
+# Extract WhisperDecoderInf
+Expand-Archive -Path .\build\whisper_base_en\WhisperDecoderInf.onnx.zip -DestinationPath .\build\whisper_base_en\
+mv .\build\whisper_base_en\model.onnx .\build\whisper_base_en\WhisperDecoderInf
+```
+
+### 11. Return to Main Directory
+
+```bash
+cd ../../../../../
+```
+
+You should now be back in the `cognitive_workflow` directory.
+
+### 12. Configure Settings
+
+Edit the configuration file for your use case:
+
+```bash
+# Open config/settings.py and adjust parameters as needed
+```
+
+### 13. Setup Environment Variables
+
+Copy the environment template and configure:
+
 ```bash
 cp env.template .env
 ```
 
-2. Edit `.env` and add your API key:
-```bash
-API_KEY=your_imagine_api_key_here
-ENDPOINT=https://aisuite.cirrascale.com/apis/v2
-HUGGINGFACE_TOKEN=your_huggingface_token_here 
-```
+Edit `.env` file with your:
+- `API_KEY`: Your Imagine API key
+- `ENDPOINT`: API endpoint URL
+- `HUGGINGFACE_TOKEN`: HuggingFace token for pyannote models
 
-### Download Required Imagine SDK
+### 14. Test the Installation
 
-Download and place the Imagine SDK in project directory (setup.sh script will install it for you):
-https://aisuite.cirrascale.com/sdk/install.html
-
-### Install
+Run the test script:
 
 ```bash
-# Clone and enter the project
-cd cognative_workflow
-
-# Run setup script
-chmod +x setup.sh
-./setup.sh
-
-# Activate environment
-source venv/bin/activate
+python main.py
 ```
+
+### 15. Check Results
+
+Results will be saved in the `outputs` folder with timestamped directories containing:
+- `transcription.txt` - Speaker-labeled transcript
+- `summary.txt` - Conversation summary
+- `judgment.json` - Situation analysis and recommendations
+- `performance_metrics.json` - Processing performance data
 
 
 ## Usage
 
-### Configuration
+Once setup is complete, you can:
 
-Key settings can be adjusted in `config/settings.py`:
+- Process audio files: `python main.py`
+- Process specific files: `python main.py path/to/audio.wav`
+- Run individual steps: `python main.py --step transcribe audio.wav`
+- View available files: `python main.py --list-files`
 
-
-### Basic Usage
-
-```bash
-# Place audio files in audio_input/ folder
-# Then run:
-python main.py
-
-# Or specify a file directly:
-python main.py path/to/your/audio.wav
-```
-
-
-## Supported Audio Formats
-
-WAV, MP3, M4A, FLAC, OGG, AAC
-
-## Output
-
-Results are saved in `outputs/run_<time_stamp>` folder:
-- `transcription.txt` - Speaker-labeled transcript
-- `summary.txt` - Conversation summary  
-- `judgment.json` - Situation analysis and recommendations
-- `performance_metrics.json` - models performance evaluation
+For more usage options, see the main README.md file.

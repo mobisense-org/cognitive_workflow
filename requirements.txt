@@ -14,5 +14,9 @@ typing-extensions>=4.0.0
 
 python-dotenv
 
-# Optional: NeMo for alternative diarization backend
-# nemo_toolkit[asr]>=1.20.0
+# Optional: NeMo for alternative diarization backend (tested only on linux systems)
+# nemo_toolkit[asr]
+
+# qualcomm
+qai-hub-models[whisper-base-en]
+imagine_sdk-0.4.2-py3-none-any.whl
