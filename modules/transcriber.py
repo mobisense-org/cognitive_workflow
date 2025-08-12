@@ -224,7 +224,6 @@ class TranscriptionService:
                         attention_dim=512,
                         mean_decode_len=224,
                     )
-                self.whisper_model = None  # Not used in AI Hub mode
                 logger.info("AI Hub Whisper app loaded successfully")
             else:
                 self.whisper_model = self.model_manager.load_whisper_model()
@@ -329,14 +328,8 @@ class AudioTranscriber:
     
     def __init__(self):
         """Initialize the transcriber with services"""
-        # Initialize model manager with local model paths
-        self.model_manager = ModelManager(
-            whisper_cache_dir=str(WHISPER_MODELS_DIR),
-            pyannote_cache_dir=str(PYANNOTE_MODELS_DIR),
-            whisper_model_size=WHISPER_MODEL_SIZE,
-            pyannote_model_name=DIARIZATION_MODEL,
-            pyannote_auth_token=PYANNOTE_AUTH_TOKEN
-        )
+        # Initialize model manager (now uses settings directly)
+        self.model_manager = ModelManager()
         
         # Initialize services with model manager
         self.transcription_service = TranscriptionService(self.model_manager)

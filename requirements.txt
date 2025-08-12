@@ -12,4 +12,11 @@ ffmpeg-python>=0.2.0
 pathlib2>=2.3.0 
 typing-extensions>=4.0.0
 
-dotenv
+python-dotenv
+
+# Optional: NeMo for alternative diarization backend (tested only on linux systems)
+# nemo_toolkit[asr]
+
+# qualcomm
+qai-hub-models[whisper-base-en]
+imagine_sdk-0.4.2-py3-none-any.whl

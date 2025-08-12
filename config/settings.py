@@ -11,8 +11,9 @@ API_KEY = os.getenv("API_KEY", "")
 ENDPOINT = os.getenv("ENDPOINT", "https://aisuite.cirrascale.com/apis/v2")
 
 # Model Configuration
-WHISPER_MODEL_SIZE = "turbo"  # Maps to large-v3-turbo.pt
+WHISPER_MODEL_SIZE = "base" 
 DIARIZATION_MODEL = "pyannote/speaker-diarization-3.1"
+DIARIZATION_BACKEND = "nemo"  # Options: "pyannote", "nemo"
 SUMMARIZER_MODEL = "Llama-3.3-70B"
 JUDGE_MODEL = "Llama-3.3-70B"
 PYANNOTE_AUTH_TOKEN = os.getenv("HUGGINGFACE_TOKEN")  # Optional for cached models
@@ -56,6 +57,6 @@ LOG_LEVEL = "INFO"
 LOG_FILE = PROJECT_ROOT / "workflow.log" 
 
 USE_AIHUB=True
-APP_DEVICE="CPU"
+APP_DEVICE="NPU"
 ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperEncoderInf/model.onnx"
 DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperDecoderInf/model.onnx"
