@@ -40,4 +40,4 @@ test_*.py
 !.env.template
 
 # External dependencies
-ai-hub-apps
+ai-hub-apps/

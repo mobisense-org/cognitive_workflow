@@ -56,7 +56,7 @@ AUDIO_INPUT_DIR.mkdir(exist_ok=True)
 LOG_LEVEL = "INFO"
 LOG_FILE = PROJECT_ROOT / "workflow.log" 
 
-USE_AIHUB=False
-APP_DEVICE="CPU"
+USE_AIHUB=True
+APP_DEVICE="NPU"
 ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperEncoderInf/model.onnx"
 DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperDecoderInf/model.onnx"
