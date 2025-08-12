@@ -1,3 +1,4 @@
+# Python
 venv/
 .venv/
 __pycache__/
@@ -10,14 +11,33 @@ __pycache__/
 *.pyzw
 *.pyzwz
 
-imagine_sdk-0.4.2-py3-none-any.whl
+# Project outputs and data
 outputs/
 models/
+results/
+build/
+
+# Environment and config
 .env
 *.log
 
-build/
+# IDE and tools
 .vscode/
+.idea/
 
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+test_*.py
+
+# Hidden files and directories
 .*
+!.gitignore
+!.env.template
+
+# External dependencies
 ai-hub-apps
