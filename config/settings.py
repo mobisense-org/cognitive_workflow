@@ -14,8 +14,8 @@ ENDPOINT = os.getenv("ENDPOINT", "https://aisuite.cirrascale.com/apis/v2")
 WHISPER_MODEL_SIZE = "base" 
 DIARIZATION_MODEL = "pyannote/speaker-diarization-3.1"
 DIARIZATION_BACKEND = "nemo"  # Options: "pyannote", "nemo"
-SUMMARIZER_MODEL = "Llama-3.3-70B"
-JUDGE_MODEL = "Llama-3.3-70B"
+SUMMARIZER_MODEL = "Llama-3.1-8B"
+JUDGE_MODEL = "Llama-3.1-8B"
 PYANNOTE_AUTH_TOKEN = os.getenv("HUGGINGFACE_TOKEN")  # Optional for cached models
 
 # Diarization Configuration
@@ -56,7 +56,7 @@ AUDIO_INPUT_DIR.mkdir(exist_ok=True)
 LOG_LEVEL = "INFO"
 LOG_FILE = PROJECT_ROOT / "workflow.log" 
 
-USE_AIHUB=True
+USE_AIHUB=False
 APP_DEVICE="NPU"
 ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperEncoderInf/model.onnx"
 DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperDecoderInf/model.onnx"
