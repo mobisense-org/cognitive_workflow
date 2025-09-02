@@ -20,3 +20,6 @@ python-dotenv
 # qualcomm
 qai-hub-models[whisper-base-en]
 imagine_sdk-0.4.2-py3-none-any.whl
+fastapi
+uvicorn
+python-multipart
