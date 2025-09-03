@@ -113,22 +113,38 @@ ffmpeg -version
 Export the Whisper model for ONNX runtime:
 
 ```bash
-python -m qai_hub_models.models.whisper_base_en.export --target-runtime onnx --device "Snapdragon X Elite CRD" --skip-profiling --skip-inferencing
+python -m qai_hub_models.models.whisper_base.export --target-runtime onnx --device "Snapdragon X Elite CRD" --skip-profiling --skip-inferencing
 ```
 
 ### 10. Setup Model Files
 
 Extract and organize the exported model files:
 
+For whisper-base
+
+
 ```powershell
 # Extract WhisperEncoderInf
-Expand-Archive -Path .\build\whisper_base_en\WhisperEncoderInf.onnx.zip -DestinationPath .\build\whisper_base_en\
-mv .\build\whisper_base_en\model.onnx .\build\whisper_base_en\WhisperEncoderInf
+Expand-Archive -Path .\build\whisper_base\HfWhisperEncoder.onnx.zip -DestinationPath .\build\whisper_base\
+mv .\build\whisper_base\model.onnx .\build\whisper_base\HfWhisperEncoder
 
 # Extract WhisperDecoderInf
-Expand-Archive -Path .\build\whisper_base_en\WhisperDecoderInf.onnx.zip -DestinationPath .\build\whisper_base_en\
-mv .\build\whisper_base_en\model.onnx .\build\whisper_base_en\WhisperDecoderInf
+Expand-Archive -Path .\build\whisper_base\HfWhisperDecoder.onnx.zip -DestinationPath .\build\whisper_base\
+mv .\build\whisper_base\model.onnx .\build\whisper_base\HfWhisperDecoder
 ```
+
+For whisper-large-v3-turbo
+
+```powershell
+# Extract WhisperEncoderInf
+Expand-Archive -Path .\build\whisper_large_v3_turbo\HfWhisperEncoder.onnx.zip -DestinationPath .\build\whisper_large_v3_turbo\
+mv .\build\whisper_large_v3_turbo\model.onnx .\build\whisper_large_v3_turbo\HfWhisperEncoder
+
+# Extract WhisperDecoderInf
+Expand-Archive -Path .\build\whisper_large_v3_turbo\HfWhisperDecoder.onnx.zip -DestinationPath .\build\whisper_large_v3_turbo\
+mv .\build\whisper_large_v3_turbo\model.onnx .\build\whisper_large_v3_turbo\HfWhisperDecoder
+```
+
 
 ### 11. Return to Main Directory
 
@@ -184,6 +200,7 @@ Results will be saved in the `outputs` folder with timestamped directories conta
 
 Once setup is complete, you can:
 
+- Run api service: `python run_api.py`
 - Process audio files: `python main.py`
 - Process specific files: `python main.py path/to/audio.wav`
 - Run individual steps: `python main.py --step transcribe audio.wav`

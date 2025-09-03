@@ -11,7 +11,8 @@ API_KEY = os.getenv("API_KEY", "")
 ENDPOINT = os.getenv("ENDPOINT", "https://aisuite.cirrascale.com/apis/v2")
 
 # Model Configuration
-WHISPER_MODEL_SIZE = "base" 
+WHISPER_MODEL_SIZE = "base"
+WHISPER_MODEL_ID = "openai/whisper-large-v3-turbo"
 DIARIZATION_MODEL = "pyannote/speaker-diarization-3.1"
 DIARIZATION_BACKEND = "nemo"  # Options: "pyannote", "nemo"
 SUMMARIZER_MODEL = "Llama-3.1-8B"
@@ -56,7 +57,10 @@ AUDIO_INPUT_DIR.mkdir(exist_ok=True)
 LOG_LEVEL = "INFO"
 LOG_FILE = PROJECT_ROOT / "workflow.log" 
 
-USE_AIHUB=False
-APP_DEVICE="NPU"
-ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperEncoderInf/model.onnx"
-DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/WhisperDecoderInf/model.onnx"
+USE_AIHUB=True
+APP_DEVICE="CPU"
+# ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/HfWhisperEncoder/model.onnx"
+# DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_base_en/HfWhisperDecoder/model.onnx"
+
+ENCODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_large_v3_turbo/HfWhisperDecoder/model.onnx"
+DECODER_PATH="ai-hub-apps/apps/windows/python/Whisper/build/whisper_large_v3_turbo/HfWhisperDecoder/model.onnx"
