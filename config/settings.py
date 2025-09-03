@@ -21,7 +21,7 @@ PYANNOTE_AUTH_TOKEN = os.getenv("HUGGINGFACE_TOKEN")  # Optional for cached mode
 
 # Diarization Configuration
 DIARIZATION_MIN_SPEAKERS = 1
-DIARIZATION_MAX_SPEAKERS = 5
+DIARIZATION_MAX_SPEAKERS = 2
 DIARIZATION_MIN_DURATION_OFF = 0.5  # Minimum silence duration between speakers
 DIARIZATION_MIN_DURATION_ON = 1.0   # Minimum duration for speech segments
 
