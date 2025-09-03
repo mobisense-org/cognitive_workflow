@@ -12,6 +12,7 @@ from utils.evaluator import evaluator
 from config.settings import (
     TRANSCRIPTION_FILE, 
     WHISPER_MODEL_SIZE,
+    WHISPER_MODEL_ID,
     DIARIZATION_MODEL, 
     DIARIZATION_MIN_SPEAKERS, 
     DIARIZATION_MAX_SPEAKERS,
@@ -25,8 +26,10 @@ from config.settings import (
     ENCODER_PATH,
     DECODER_PATH
 )
-from utils.model_manager import ModelManager
 import torch
+from utils.model_manager import ModelManager
+from qai_hub_models.models._shared.hf_whisper.app import HfWhisperApp
+from qai_hub_models.utils.onnx_torch_wrapper import OnnxModelTorchWrapper
 warnings.filterwarnings("ignore", category=UserWarning, module="pyannote")
 
 logger = setup_logger(__name__)
@@ -202,27 +205,18 @@ class TranscriptionService:
         """Load the Whisper model using model manager"""
         try:
             if USE_AIHUB:
-                from qai_hub_models.models._shared.whisper.app import WhisperApp
-                from qai_hub_models.utils.onnx_torch_wrapper import OnnxModelTorchWrapper
-                
                 logger.info("Loading AI Hub Whisper app")
                 if APP_DEVICE == "NPU":
-                    self.app = WhisperApp(
+                    self.app = HfWhisperApp(
                         OnnxModelTorchWrapper.OnNPU(ENCODER_PATH),
                         OnnxModelTorchWrapper.OnNPU(DECODER_PATH),
-                        num_decoder_blocks=6,
-                        num_decoder_heads=8,
-                        attention_dim=512,
-                        mean_decode_len=224,
+                        hf_model_id=WHISPER_MODEL_ID
                     )
                 else:
-                    self.app = WhisperApp(
+                    self.app = HfWhisperApp(
                         OnnxModelTorchWrapper.OnCPU(ENCODER_PATH),
                         OnnxModelTorchWrapper.OnCPU(DECODER_PATH),
-                        num_decoder_blocks=6,
-                        num_decoder_heads=8,
-                        attention_dim=512,
-                        mean_decode_len=224,
+                        hf_model_id=WHISPER_MODEL_ID
                     )
                 logger.info("AI Hub Whisper app loaded successfully")
             else:
