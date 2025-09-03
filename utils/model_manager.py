@@ -1,4 +1,7 @@
 import os
+import tempfile
+import wave
+import struct
 from typing import Optional, Union
 import whisper_timestamped as whisper
 from pyannote.audio import Pipeline
@@ -54,6 +57,7 @@ class ModelManager:
 
     def _warmup_diarization_pipeline(self, pipeline: Pipeline) -> bool:
         """Warm up diarization pipeline with a small audio sample"""
+        temp_path = None
         try:
             print("[INFO] Warming up diarization pipeline...")
 
@@ -62,17 +66,26 @@ class ModelManager:
             duration = 2.0
             dummy_audio = np.zeros(int(sample_rate * duration), dtype=np.float32)
 
-            # Convert to the format expected by pyannote
-            audio = Audio(sample_rate=sample_rate, mono=True)
-            waveform, sample_rate = audio.crop(
-                {"start": 0, "end": duration}, dummy_audio
-            )
+            # Convert float32 to int16 for WAV format
+            dummy_audio_int16 = (dummy_audio * 32767).astype(np.int16)
+
+            # Create temporary WAV file
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
+                
+                with wave.open(temp_path, 'wb') as wav_file:
+                    wav_file.setnchannels(1)  # mono
+                    wav_file.setsampwidth(2)  # 16-bit
+                    wav_file.setframerate(sample_rate)
+                    wav_file.writeframes(dummy_audio_int16.tobytes())
 
             # Run a small inference pass to warm up the pipeline
             with torch.no_grad():
                 start_time = time.time()
                 diarization = pipeline(
-                    {"waveform": waveform, "sample_rate": sample_rate}
+                    temp_path,
+                    min_speakers=1,
+                    max_speakers=2
                 )
                 end_time = time.time()
                 print(
@@ -84,6 +97,13 @@ class ModelManager:
         except Exception as e:
             print(f"[WARNING] Diarization pipeline warmup failed: {e}")
             return False
+        finally:
+            # Clean up temporary file
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
 
     def get_optimized_transcription_params(self) -> dict:
         """Get optimized transcription parameters for CPU inference"""

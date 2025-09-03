@@ -18,7 +18,7 @@ python-dotenv
 # nemo_toolkit[asr]
 
 # qualcomm
-qai-hub-models[whisper-base-en]
+qai-hub-models
 imagine_sdk-0.4.2-py3-none-any.whl
 fastapi
 uvicorn
